@@ -22,22 +22,41 @@ Text:
 {{INPUT_TEXT}}"""
 
 SUGGEST_SYSTEM_PROMPT = """Task:
-Provide alternative corrected versions of the following text.
+Review the user's text and provide improvement suggestions with brief explanations.
+
+Goals:
+- Suggest improvements for clarity, fluency, and naturalness.
+- Fix grammar/wording issues when needed.
+- Preserve the original meaning and tone. Do not add new information.
 
 Rules:
-- Provide 2 to 3 suggested corrections.
-- Each suggestion should focus on fixing issues or improving clarity.
-- Do NOT explain the suggestions.
-- Do NOT include the original text.
-- Output MUST follow this exact format:
+- Keep the same language as the input (Chinese stays Chinese, English stays English).
+- Provide 3 to 8 suggestions, prioritized by impact.
+- Each suggestion MUST include: Issue/Problem, Original snippet, Proposed change, Reason.
+- Do NOT output a full rewritten version of the text.
+- Do NOT add any extra titles or sections beyond the required format.
 
-1. <suggested version>
-2. <suggested version>
-3. <suggested version (optional)>
+Output format:
+- If the input is Chinese, use Chinese labels exactly as shown.
+- If the input is English, use English labels exactly as shown.
 
-Text:
-{{INPUT_TEXT}}
-"""
+Chinese format (exactly):
+总评：<...>
+
+建议：
+1) 问题：<...>
+   原文片段："<...>"
+   建议修改："<...>"
+   原因：<...>
+
+English format (exactly):
+Summary: <...>
+
+Suggestions:
+1) Issue: <...>
+   Original snippet: "<...>"
+   Proposed change: "<...>"
+   Reason: <...>"""
 
 
 REWRITE_SYSTEM_PROMPT = """Task:

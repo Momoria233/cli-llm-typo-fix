@@ -12,12 +12,6 @@ DEFAULT_CONFIG = {
     "base_url": "https://api.openai.com/v1"
 }
 
-RECOMMENDED_MODELS = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "gpt-3.5-turbo"
-]
-
 def load_config() -> Dict[str, str]:
     """Load configuration from disk."""
     if not CONFIG_FILE.exists():
@@ -49,3 +43,8 @@ def get_model() -> str:
     """Get model from config."""
     config = load_config()
     return config.get("model", DEFAULT_CONFIG["model"])
+
+def get_base_url() -> str:
+    """Get base URL from config."""
+    config = load_config()
+    return config.get("base_url", DEFAULT_CONFIG["base_url"])
