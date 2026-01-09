@@ -1,10 +1,11 @@
 # typofix
 
-A cross-platform CLI tool to fix typos and improve text with an LLM.
+A cross-platform CLI tool to fix typos and improve text with an LLM that supports both Chinese and English.
 
 - Default behavior: `typofix <TEXT>` runs typo-fixing (no subcommand needed).
 - Extra modes: `--suggest` (suggest improvements + reasons), `--rewrite` (rewrite alternatives).
 - Clipboard: in default fix mode, the final text is copied to clipboard.
+- Supports OpenAI-compatible providers.
 
 ## Requirements
 
@@ -18,10 +19,10 @@ A cross-platform CLI tool to fix typos and improve text with an LLM.
 pip install -e .
 ```
 
-### Regular install (from a source checkout)
+### Regular install
 
 ```bash
-pip install .
+pip install typofix
 ```
 
 ## Quickstart
@@ -31,7 +32,7 @@ pip install .
 ```bash
 typofix config --api-key YOUR_KEY
 # optional:
-typofix config --model gpt-4o-mini
+typofix config --model MODEL_NAME
 ```
 
 2) Fix a sentence:
@@ -54,7 +55,7 @@ The output is also copied to clipboard in fix mode.
 
 ### Suggest improvements (with explanations)
 
-Gives prioritized suggestions and brief reasons. Output is in Chinese if input is Chinese; in English if input is English.
+Gives prioritized suggestions and brief reasons.
 
 ```bash
 typofix --suggest "This sentence have a problem."
@@ -95,7 +96,7 @@ typofix config
 ### Set model
 
 ```bash
-typofix config --model gpt-4o-mini
+typofix config --model MODEL_NAME
 ```
 
 ### List available models
