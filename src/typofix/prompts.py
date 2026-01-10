@@ -11,6 +11,7 @@ DEFAULT_SYSTEM_PROMPT = """Task:
 Fix grammatical errors, awkward phrasing, and obvious fluency issues in the following text.
 
 Rules:
+- Keep the same language as the input (Chinese stays Chinese, English stays English)
 - Only fix incorrect or unnatural parts.
 - Do NOT rewrite for style.
 - Do NOT add or remove information.

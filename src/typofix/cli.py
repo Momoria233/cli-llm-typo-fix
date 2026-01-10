@@ -150,12 +150,6 @@ def app():
         # No args provided, default to 'fix' which handles stdin check
         sys.argv.insert(1, "fix")
     elif sys.argv[1] not in known_commands:
-        # If it's not 'config', treat it as args for 'fix'
-        # UNLESS it's --help, in which case we let Typer handle it?
-        # NO, user wants 'typofix --help' to show usage (fix usage) + config existence.
-        # If we inject 'fix', 'typofix --help' becomes 'typofix fix --help'.
-        # This shows 'fix' usage. We added 'epilog' to 'fix' to mention 'config'.
-        # So yes, inject 'fix' even for --help.
         sys.argv.insert(1, "fix")
         
     typer_app()
