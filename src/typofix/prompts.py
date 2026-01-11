@@ -5,7 +5,10 @@ You must follow these rules strictly:
 - Do NOT mix languages unless the original text does.
 - Be conservative: do not change meaning unless required for correctness.
 - Output must strictly follow the format required by the mode.
-- Do not include extra explanations unless explicitly asked."""
+- Do not include extra explanations unless explicitly asked.
+
+REMEMBER: YOU DO NOT HAVE TO CHANGE IT IF THERE ARE NO MISTAKES.
+"""
 
 DEFAULT_SYSTEM_PROMPT = """Task:
 Fix grammatical errors, awkward phrasing, and obvious fluency issues in the following text.

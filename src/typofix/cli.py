@@ -1,6 +1,8 @@
 import sys
 import typer
 import pyperclip
+import subprocess
+import shutil
 from typing import Optional, List
 from typing_extensions import Annotated
 from .llm import fix_text, list_models
@@ -18,9 +20,6 @@ def config(
     base_url: Annotated[Optional[str], typer.Option("--base-url", help="Set OpenAI API base URL")] = None,
     list_models_flag: Annotated[bool, typer.Option("--list", help="List available models from OpenAI API")] = False,
 ):
-    """
-    Configure API key and model settings.
-    """
     config_data = load_config()
     
     if api_key:
@@ -54,20 +53,15 @@ def config(
 
 @typer_app.command()
 def setup():
-    """
-    Interactive step-by-step configuration.
-    """
     typer.echo("Welcome to typofix configuration wizard!")
     typer.echo("We'll set up your API credentials and preferences.\n")
 
     current_config = load_config()
 
-    # Base URL
     typer.echo("1. API Base URL")
     typer.echo("   The endpoint for the LLM API (e.g., https://api.openai.com/v1).")
     base_url = typer.prompt("   Base URL", default=current_config.get("base_url", "https://api.openai.com/v1"))
 
-    # API Key
     typer.echo("\n2. API Key")
     typer.echo("   Your authentication key for the provider.")
     
@@ -80,11 +74,9 @@ def setup():
     if not api_key and current_config.get("api_key"):
         api_key = current_config["api_key"]
 
-    # Model
     typer.echo("\n3. Model")
     typer.echo("   The name of the LLM model to use (e.g., gpt-4o-mini).")
     
-    # Try to list models
     typer.echo("   Fetching available models...")
     try:
         models = list_models(api_key=api_key, base_url=base_url)
@@ -99,7 +91,6 @@ def setup():
 
     model = typer.prompt("   Model", default=current_config.get("model", "gpt-4o-mini"))
 
-    # Save
     config_data = current_config.copy()
     config_data.update({
         "api_key": api_key,
@@ -111,7 +102,6 @@ def setup():
     
     typer.echo("\nConfiguration saved successfully!")
     
-    # Usage Guide
     typer.echo("\n" + "="*30)
     typer.echo("How to use typofix:")
     typer.echo("1. Default (Fix):   typofix \"text with typos\"")
@@ -119,6 +109,48 @@ def setup():
     typer.echo("3. Rewrite Mode:    typofix --rewrite \"text with typos\"")
     typer.echo("4. Piped Input:     echo \"typos\" | typofix")
     typer.echo("="*30 + "\n")
+
+def copy_to_clipboard(text: str) -> bool:
+    success = False
+    try:
+        pyperclip.copy(text)
+        success = True
+    except Exception:
+        if sys.platform == "darwin":
+            try:
+                process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+                process.communicate(input=text.encode('utf-8'))
+                success = (process.returncode == 0)
+            except Exception:
+                pass
+        elif sys.platform.startswith("linux"):
+            commands = [
+                (['wl-copy'], {}),
+                (['xclip', '-selection', 'clipboard'], {}),
+                (['xsel', '--clipboard', '--input'], {})
+            ]
+            
+            for cmd_args, kwargs in commands:
+                if shutil.which(cmd_args[0]):
+                    try:
+                        process = subprocess.Popen(cmd_args, stdin=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
+                        process.communicate(input=text.encode('utf-8'))
+                        if process.returncode == 0:
+                            success = True
+                            break
+                    except Exception:
+                        continue
+
+    if success:
+        return True
+
+    typer.echo("Warning: Clipboard copy failed.")
+    if sys.platform.startswith("linux"):
+        typer.echo("To enable clipboard support, please install 'wl-copy', 'xclip', or 'xsel'.")
+    elif sys.platform == "darwin":
+        typer.echo("Ensure 'pbcopy' is available.")
+    
+    return False
 
 @typer_app.command(
     name="fix",
@@ -130,30 +162,21 @@ def fix(
     suggest: Annotated[bool, typer.Option("--suggest", help="Suggest improvements instead of just fixing.")] = False,
     rewrite: Annotated[bool, typer.Option("--rewrite", help="Rewrite the text completely.")] = False,
 ):
-    """
-    Fix typos in the provided TEXT or from stdin.
-    """
-    # Determine mode
     mode = "fix"
     if rewrite:
         mode = "rewrite"
     elif suggest:
         mode = "suggest"
 
-    # Input handling logic
     input_text = ""
     if text:
         input_text = " ".join(text)
     
     if not input_text:
-        # Check if there is data in stdin (piped input)
-        # isatty() returns True if the stream is interactive (connected to a terminal device)
-        # It returns False if it's a pipe or file redirection.
         if not sys.stdin.isatty():
-            # Read all input from stdin
             input_text = sys.stdin.read().strip()
         else:
-            # Interactive mode but no argument provided
+            # wont occur this situation
             typer.echo("No text provided. Please provide text as an argument or via stdin.")
             sys.exit(1)
 
@@ -166,9 +189,7 @@ def fix(
     
     # Handle config error / missing API key
     if result.startswith("[CONFIG_NEEDED]"):
-        # Remove the internal prefix and show friendly message
         friendly_msg = result.replace("[CONFIG_NEEDED] ", "")
-        # Add visual emphasis
         typer.echo(typer.style(friendly_msg, fg=typer.colors.YELLOW, bold=True))
         return
 
@@ -178,8 +199,8 @@ def fix(
     
     if mode == "fix":
         typer.echo(result)    
-        pyperclip.copy(result)
-        typer.echo("Copied to clipboard!", err=True)
+        if copy_to_clipboard(result):
+            typer.echo("Copied to clipboard!")
     elif mode == "suggest":
         typer.echo(result)
     elif mode == "rewrite":
@@ -199,32 +220,26 @@ def fix(
             choice = typer.prompt(f"Select an option (1-{len(options)})", type=int)
             if 1 <= choice <= len(options):
                 selected_text = options[choice - 1]
-                pyperclip.copy(selected_text)
-                typer.echo(f"Option {choice} copied to clipboard!", err=True)
+                if copy_to_clipboard(selected_text):
+                    typer.echo(f"Option {choice} copied to clipboard!")
             else:
                 typer.echo("Invalid selection.")
         else:
-            # Fallback if parsing fails
+            # Fallback
             typer.echo("Could not parse options for selection.")
 
 def app():
-    """
-    Entry point for the CLI. Handles default command logic using sys.argv injection.
-    """
     known_commands = ["config", "setup"]
-    
-    # Check if first arg is a known command
-    # sys.argv[0] is script name
     if len(sys.argv) == 1:
-        # No args provided
         if sys.stdin.isatty():
-             # Interactive -> Show Help
+             sys.argv.insert(1, "fix")
              sys.argv.append("--help")
         else:
-             # Piped -> fix
              sys.argv.insert(1, "fix")
-    elif sys.argv[1] not in known_commands and not sys.argv[1].startswith("-"):
-        sys.argv.insert(1, "fix")
+    else:
+        first_arg = sys.argv[1]
+        if first_arg not in known_commands:
+            sys.argv.insert(1, "fix")
         
     typer_app()
 
