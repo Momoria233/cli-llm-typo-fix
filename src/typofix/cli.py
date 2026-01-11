@@ -46,16 +46,84 @@ def config(
         
     if not api_key and not model and not base_url and not list_models_flag:
         typer.echo("Current Configuration:")
-        typer.echo(f"API Key: {'*' * 8 + config_data['api_key'][-4:] if config_data['api_key'] else 'Not set'}")
-        typer.echo(f"Model: {config_data['model']}")
+        typer.echo(f"API Key: {'*' * 8 + config_data['api_key'][-4:] if config_data.get('api_key') else 'Not set'}")
+        typer.echo(f"Model: {config_data.get('model', 'Not set')}")
         typer.echo(f"Base URL: {config_data.get('base_url', 'Default')}")
             
     save_config(config_data)
 
+@typer_app.command()
+def setup():
+    """
+    Interactive step-by-step configuration.
+    """
+    typer.echo("Welcome to typofix configuration wizard!")
+    typer.echo("We'll set up your API credentials and preferences.\n")
+
+    current_config = load_config()
+
+    # Base URL
+    typer.echo("1. API Base URL")
+    typer.echo("   The endpoint for the LLM API (e.g., https://api.openai.com/v1).")
+    base_url = typer.prompt("   Base URL", default=current_config.get("base_url", "https://api.openai.com/v1"))
+
+    # API Key
+    typer.echo("\n2. API Key")
+    typer.echo("   Your authentication key for the provider.")
+    
+    api_key_prompt = "   API Key"
+    if current_config.get("api_key"):
+        api_key_prompt += " (Leave empty to keep current)"
+    
+    api_key = typer.prompt(api_key_prompt, hide_input=True, default="", show_default=False)
+    
+    if not api_key and current_config.get("api_key"):
+        api_key = current_config["api_key"]
+
+    # Model
+    typer.echo("\n3. Model")
+    typer.echo("   The name of the LLM model to use (e.g., gpt-4o-mini).")
+    
+    # Try to list models
+    typer.echo("   Fetching available models...")
+    try:
+        models = list_models(api_key=api_key, base_url=base_url)
+        typer.echo("   Available models:")
+        for m in models:
+            typer.echo(f"   - {m}")
+    except Exception as e:
+        typer.echo("   ⚠️ Could not fetch models automatically.")
+        typer.echo("   (Check your API Key, Base URL, or network connection)")
+        typer.echo(f"   Error details: {str(e)}")
+        typer.echo("   Please enter the model name manually.")
+
+    model = typer.prompt("   Model", default=current_config.get("model", "gpt-4o-mini"))
+
+    # Save
+    config_data = current_config.copy()
+    config_data.update({
+        "api_key": api_key,
+        "base_url": base_url,
+        "model": model
+    })
+    
+    save_config(config_data)
+    
+    typer.echo("\nConfiguration saved successfully!")
+    
+    # Usage Guide
+    typer.echo("\n" + "="*30)
+    typer.echo("How to use typofix:")
+    typer.echo("1. Default (Fix):   typofix \"text with typos\"")
+    typer.echo("2. Suggest Mode:    typofix --suggest \"text with typos\"")
+    typer.echo("3. Rewrite Mode:    typofix --rewrite \"text with typos\"")
+    typer.echo("4. Piped Input:     echo \"typos\" | typofix")
+    typer.echo("="*30 + "\n")
+
 @typer_app.command(
     name="fix",
     help="Fix typos in the provided TEXT or from stdin.",
-    epilog="Commands:\n  config   Configure API key and settings."
+    epilog="Commands:\n  config   Configure API key and settings.\n  setup    Interactive configuration wizard."
 )
 def fix(
     text: Annotated[Optional[List[str]], typer.Argument(help="The text to fix typos in.")] = None,
@@ -100,7 +168,8 @@ def fix(
     if result.startswith("[CONFIG_NEEDED]"):
         # Remove the internal prefix and show friendly message
         friendly_msg = result.replace("[CONFIG_NEEDED] ", "")
-        typer.echo(friendly_msg)
+        # Add visual emphasis
+        typer.echo(typer.style(friendly_msg, fg=typer.colors.YELLOW, bold=True))
         return
 
     if result.startswith("Error:"):
@@ -142,14 +211,19 @@ def app():
     """
     Entry point for the CLI. Handles default command logic using sys.argv injection.
     """
-    known_commands = ["config"]
+    known_commands = ["config", "setup"]
     
     # Check if first arg is a known command
     # sys.argv[0] is script name
     if len(sys.argv) == 1:
-        # No args provided, default to 'fix' which handles stdin check
-        sys.argv.insert(1, "fix")
-    elif sys.argv[1] not in known_commands:
+        # No args provided
+        if sys.stdin.isatty():
+             # Interactive -> Show Help
+             sys.argv.append("--help")
+        else:
+             # Piped -> fix
+             sys.argv.insert(1, "fix")
+    elif sys.argv[1] not in known_commands and not sys.argv[1].startswith("-"):
         sys.argv.insert(1, "fix")
         
     typer_app()

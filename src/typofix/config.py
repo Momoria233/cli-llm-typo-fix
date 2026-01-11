@@ -8,7 +8,8 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_CONFIG = {
     "api_key": "",
-    "model": "gpt-4o-mini",
+    "default_openai_model": "gpt-4o-mini",
+    "model": "",
     "base_url": "https://api.openai.com/v1"
 }
 
@@ -42,6 +43,9 @@ def get_api_key() -> Optional[str]:
 def get_model() -> str:
     """Get model from config."""
     config = load_config()
+    env_key = os.getenv("OPENAI_API_KEY")
+    if env_key:
+        return config.get("model", DEFAULT_CONFIG["default_openai_model"])
     return config.get("model", DEFAULT_CONFIG["model"])
 
 def get_base_url() -> str:
